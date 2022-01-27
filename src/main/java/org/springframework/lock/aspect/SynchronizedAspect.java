@@ -17,9 +17,9 @@ public class SynchronizedAspect {
         Class<?> clz = jp.getTarget().getClass();
         Object result = null;
         synchronized (clz) {
-            LOGGER.info(clz.getSimpleName() + "获得锁");
+            LOGGER.info(clz.getSimpleName() + "获得互斥锁");
             result = jp.proceed();
-            LOGGER.info(clz.getSimpleName() + "释放锁");
+            LOGGER.info(clz.getSimpleName() + "释放互斥锁");
         }
         return result;
     }

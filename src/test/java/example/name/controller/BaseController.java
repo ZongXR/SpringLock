@@ -20,4 +20,11 @@ public class BaseController {
         String result = this.baseService.testSynchronized();
         return result;
     }
+
+    @RequestMapping(value = "/testReadLock", method = RequestMethod.GET)
+    @ResponseBody
+    public String testReadLock(){
+        String result = this.baseService.testReadLock();
+        return result;
+    }
 }

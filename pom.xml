@@ -40,6 +40,18 @@
             <artifactId>auto-common</artifactId>
             <version>0.8</version>
         </dependency>
+        <!--    beanutils    -->
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+            <version>1.9.3</version>
+        </dependency>
+        <!--  cglib  -->
+        <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib-nodep</artifactId>
+            <version>3.2.4</version>
+        </dependency>
         <!--    springboot    -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
