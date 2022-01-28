@@ -8,7 +8,6 @@ import org.aspectj.lang.annotation.Aspect;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 @Aspect
@@ -22,16 +21,12 @@ public class ReadLockAspect {
         Class<?> clz = obj.getClass();
         Lock readLock = null;
         for (Field field : clz.getDeclaredFields()) {
-            if (Lock.class.isAssignableFrom(field.getType())){
+            if ("$readLock".equals(field.getName())){
                 field.setAccessible(true);
                 Object unknownLock = field.get(obj);
-                if (unknownLock instanceof ReentrantReadWriteLock.ReadLock) {
-                    readLock = (Lock) unknownLock;
-                    break;
-                }
+                readLock = (Lock) unknownLock;
             }
         }
-        System.out.println(readLock);
         Object result = null;
         if (readLock != null) {
             readLock.lock();

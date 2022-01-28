@@ -79,9 +79,11 @@ public class ReadLockProcessor extends AbstractProcessor {
                         }
                         if (!foundLock){
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
-                            // TODO 修改语法树
+                            // 修改语法树
                             JCVariableDecl lock = makeReadWriteLock();
-                            jcClassDecl.defs = jcClassDecl.defs.prepend(lock);
+                            JCVariableDecl readLock = makeReadLock();
+                            jcClassDecl.defs = jcClassDecl.defs.append(lock);
+                            jcClassDecl.defs = jcClassDecl.defs.append(readLock);
                         }
                         super.visitClassDef(jcClassDecl);
                     }
@@ -93,12 +95,23 @@ public class ReadLockProcessor extends AbstractProcessor {
     }
 
     private JCVariableDecl makeReadWriteLock(){
-        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE);
+        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
-                this.names.fromString("lock"),
+                this.names.fromString("$lock"),
                 this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
                 this.treeMaker.NewClass(null, nil(), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), nil(), null)
+        );
+        return var;
+    }
+
+    private JCVariableDecl makeReadLock(){
+        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
+        JCVariableDecl var = this.treeMaker.VarDef(
+                modifiers,
+                this.names.fromString("$readLock"),
+                this.memberAccess("java.util.concurrent.locks.Lock"),
+                treeMaker.Apply(nil(), treeMaker.Select(treeMaker.Ident(names.fromString("$lock")), names.fromString("readLock")), nil())
         );
         return var;
     }

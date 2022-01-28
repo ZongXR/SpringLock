@@ -14,13 +14,13 @@
 <code>public Consumer queryConsumerById(String id){...}</code><br />
 等同于<br />
 <code>public Consumer queryConsumerById(String id){</code><br />
-    <code>&nbsp;&nbsp;&nbsp;&nbsp;this.readLock.lock();</code><br />
-    <code>&nbsp;&nbsp;&nbsp;&nbsp;try{</code><br />
-    <code>    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...</code><br />
-    <code>&nbsp;&nbsp;&nbsp;&nbsp;}finally{</code><br />
-    <code>    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;this.readLock.unlock();</code><br />
-    <code>&nbsp;&nbsp;&nbsp;&nbsp;}</code><br />
-    <code>&nbsp;&nbsp;&nbsp;&nbsp;return ...</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;this.readLock.lock();</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;try{</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;...</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;}finally{</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;this.readLock.unlock();</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;}</code><br />
+<code>&nbsp;&nbsp;&nbsp;&nbsp;return ...</code><br />
 <code>}</code><br />
 如何？看了上面的简介是不是觉得使用很方便呢？
 <h2>版本更新</h2>
@@ -36,5 +36,8 @@
 </tr>
 <tr>
 <td>0.2.1.0</td><td>开发读锁注解，目前已实现注解编译期间添加读写锁</td><td>2022年1月28日</td>
+</tr>
+<tr>
+<td>0.2.2.0</td><td>完成读锁开发，目前可基于注解动态生成读写锁和读锁</td><td>2022年1月28日</td>
 </tr>
 </table>
