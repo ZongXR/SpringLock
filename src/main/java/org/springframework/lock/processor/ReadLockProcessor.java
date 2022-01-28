@@ -65,24 +65,34 @@ public class ReadLockProcessor extends AbstractProcessor {
                     @Override
                     public void visitClassDef(JCTree.JCClassDecl jcClassDecl) {
                         // 在抽象树中找出所有的变量
-                        boolean foundLock = false;
+                        boolean foundReadWriteLock = false;
+                        boolean foundReadLock = false;
                         for (JCTree jcTree : jcClassDecl.defs) {
                             if (jcTree.getKind().equals(Tree.Kind.VARIABLE)) {
                                 JCTree.JCVariableDecl var = (JCTree.JCVariableDecl) jcTree;
-                                if ("java.util.concurrent.locks.ReadWriteLock".equalsIgnoreCase(var.vartype.type.toString()) || "java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock".equals(var.vartype.type.toString())) {
+                                if ("java.util.concurrent.locks.ReadWriteLock".equalsIgnoreCase(var.vartype.type.toString()) && "$lock".equals(var.name.toString())) {
+                                    // 找到了类中的读写锁，不修改语法树
+                                    messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的读写锁" + var.name);
+                                    foundReadWriteLock = true;
+                                }
+                                if ("$readLock".equals(var.name.toString())){
                                     // 找到了类中的读锁，不修改语法树
                                     messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的读锁" + var.name);
-                                    foundLock = true;
-                                    break;
+                                    foundReadLock = true;
                                 }
+                                if (foundReadWriteLock && foundReadLock)
+                                    break;
                             }
                         }
-                        if (!foundLock){
-                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
-                            // 修改语法树
-                            JCVariableDecl lock = makeReadWriteLock();
-                            JCVariableDecl readLock = makeReadLock();
+                        // 修改语法树
+                        JCVariableDecl lock = makeReadWriteLock();
+                        JCVariableDecl readLock = makeReadLock();
+                        if (!foundReadWriteLock) {
+                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
                             jcClassDecl.defs = jcClassDecl.defs.append(lock);
+                        }
+                        if (!foundReadLock) {
+                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
                             jcClassDecl.defs = jcClassDecl.defs.append(readLock);
                         }
                         super.visitClassDef(jcClassDecl);
