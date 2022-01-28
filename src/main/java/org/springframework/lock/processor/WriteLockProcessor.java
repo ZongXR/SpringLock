@@ -1,16 +1,15 @@
 package org.springframework.lock.processor;
 
 import com.google.auto.service.AutoService;
-
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
-import com.sun.tools.javac.util.*;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.Names;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -21,15 +20,13 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import static com.sun.tools.javac.tree.JCTree.*;
 import static com.sun.tools.javac.util.List.nil;
 
-@SupportedAnnotationTypes("org.springframework.lock.annotation.ReadLock")
+@SupportedAnnotationTypes("org.springframework.lock.annotation.WriteLock")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)
-public class ReadLockProcessor extends AbstractProcessor {
+public class WriteLockProcessor extends AbstractProcessor {
 
     private Messager messager; // 编译时期输入日志的
     private JavacTrees javacTrees; // 提供了待处理的抽象语法树
@@ -65,7 +62,7 @@ public class ReadLockProcessor extends AbstractProcessor {
                     public void visitClassDef(JCTree.JCClassDecl jcClassDecl) {
                         // 在抽象树中找出所有的变量
                         boolean foundReadWriteLock = false;
-                        boolean foundReadLock = false;
+                        boolean foundWriteLock = false;
                         for (JCTree jcTree : jcClassDecl.defs) {
                             if (jcTree.getKind().equals(Tree.Kind.VARIABLE)) {
                                 JCTree.JCVariableDecl var = (JCTree.JCVariableDecl) jcTree;
@@ -74,25 +71,25 @@ public class ReadLockProcessor extends AbstractProcessor {
                                     messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的读写锁" + var.name);
                                     foundReadWriteLock = true;
                                 }
-                                if ("$readLock".equals("" + var.name)){
-                                    // 找到了类中的读锁，不修改语法树
-                                    messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的读锁" + var.name);
-                                    foundReadLock = true;
+                                if ("$writeLock".equals("" + var.name)){
+                                    // 找到了类中的写锁，不修改语法树
+                                    messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的写锁" + var.name);
+                                    foundWriteLock = true;
                                 }
-                                if (foundReadWriteLock && foundReadLock)
+                                if (foundReadWriteLock && foundWriteLock)
                                     break;
                             }
                         }
                         // 修改语法树
-                        JCVariableDecl lock = makeReadWriteLock();
-                        JCVariableDecl readLock = makeReadLock();
+                        JCTree.JCVariableDecl lock = makeReadWriteLock();
+                        JCTree.JCVariableDecl writeLock = makeWriteLock();
                         if (!foundReadWriteLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
                             jcClassDecl.defs = jcClassDecl.defs.append(lock);
                         }
-                        if (!foundReadLock) {
-                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
-                            jcClassDecl.defs = jcClassDecl.defs.append(readLock);
+                        if (!foundWriteLock) {
+                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁");
+                            jcClassDecl.defs = jcClassDecl.defs.append(writeLock);
                         }
                         super.visitClassDef(jcClassDecl);
                     }
@@ -103,9 +100,9 @@ public class ReadLockProcessor extends AbstractProcessor {
         return Boolean.TRUE;
     }
 
-    private JCVariableDecl makeReadWriteLock(){
-        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
-        JCVariableDecl var = this.treeMaker.VarDef(
+    private JCTree.JCVariableDecl makeReadWriteLock(){
+        JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
+        JCTree.JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
                 this.names.fromString("$lock"),
                 this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
@@ -114,18 +111,18 @@ public class ReadLockProcessor extends AbstractProcessor {
         return var;
     }
 
-    private JCVariableDecl makeReadLock(){
-        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
-        JCVariableDecl var = this.treeMaker.VarDef(
+    private JCTree.JCVariableDecl makeWriteLock(){
+        JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
+        JCTree.JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
-                this.names.fromString("$readLock"),
+                this.names.fromString("$writeLock"),
                 this.memberAccess("java.util.concurrent.locks.Lock"),
-                treeMaker.Apply(nil(), treeMaker.Select(treeMaker.Ident(names.fromString("$lock")), names.fromString("readLock")), nil())
+                treeMaker.Apply(nil(), treeMaker.Select(treeMaker.Ident(names.fromString("$lock")), names.fromString("writeLock")), nil())
         );
         return var;
     }
 
-    private JCExpression memberAccess(String components) {
+    private JCTree.JCExpression memberAccess(String components) {
         String[] componentArray = components.split("\\.");
         JCTree.JCExpression expr = treeMaker.Ident(this.names.fromString(componentArray[0]));
         for (int i = 1; i < componentArray.length; i++) {

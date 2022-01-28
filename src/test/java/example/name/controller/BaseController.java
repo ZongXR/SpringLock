@@ -27,4 +27,11 @@ public class BaseController {
         String result = this.baseService.testReadLock();
         return result;
     }
+
+    @RequestMapping(value = "/testWriteLock", method = RequestMethod.GET)
+    @ResponseBody
+    public String testWriteLock(){
+        String result = this.baseService.testWriteLock();
+        return result;
+    }
 }
