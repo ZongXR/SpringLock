@@ -14,11 +14,11 @@ public class BaseService {
 
     private static final Log LOGGER = LogFactory.getLog(BaseService.class);
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
-    private final Lock readLock = lock.readLock();
-
-    private final Lock writeLock = lock.writeLock();
+//    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+//
+//    private final Lock readLock = lock.readLock();
+//
+//    private final Lock writeLock = lock.writeLock();
 
     @Synchronized
     public String testSynchronized() {
