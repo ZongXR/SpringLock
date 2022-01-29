@@ -9,11 +9,23 @@ import org.aspectj.lang.annotation.Aspect;
 import java.lang.reflect.Field;
 import java.util.concurrent.locks.Lock;
 
+/**
+ * 用于处理写锁的切面
+ */
 @Aspect
 public class WriteLockAspect {
 
+    /**
+     * 日志
+     */
     private static final Log LOGGER = LogFactory.getLog(WriteLockAspect.class);
 
+    /**
+     * 环绕通知
+     * @param jp 切入点
+     * @return 原函数返回值
+     * @throws Throwable 原函数抛出异常
+     */
     @Around("@annotation(org.springframework.lock.annotation.WriteLock)")
     public Object aroundWriteLock(ProceedingJoinPoint jp) throws Throwable {
         Object obj = jp.getTarget();

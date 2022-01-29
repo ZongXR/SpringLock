@@ -6,11 +6,11 @@ import org.springframework.lock.aspect.ReadLockAspect;
 import org.springframework.lock.aspect.SynchronizedAspect;
 import org.springframework.lock.aspect.WriteLockAspect;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
+/**
+ * 如果要使注解生效，需要在启动类加上这个注解
+ */
 @Import({
         SynchronizedAspect.class,
         ReadLockAspect.class,
@@ -19,5 +19,6 @@ import java.lang.annotation.Target;
 @EnableAspectJAutoProxy(exposeProxy = true, proxyTargetClass = true)
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Documented
 public @interface EnableSpringLocks {
 }

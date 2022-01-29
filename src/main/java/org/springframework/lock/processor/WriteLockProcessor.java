@@ -23,16 +23,38 @@ import java.util.Set;
 
 import static com.sun.tools.javac.util.List.nil;
 
+/**
+ * 写锁的处理器，用来将写锁编译进类的成员变量
+ */
 @SupportedAnnotationTypes("org.springframework.lock.annotation.WriteLock")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 @AutoService(Processor.class)
 public class WriteLockProcessor extends AbstractProcessor {
 
-    private Messager messager; // 编译时期输入日志的
-    private JavacTrees javacTrees; // 提供了待处理的抽象语法树
-    private TreeMaker treeMaker; // 封装了创建AST节点的一些方法
-    private Names names; // 提供了创建标识符的方法
+    /**
+     * 编译时期输入日志的
+     */
+    private Messager messager;
 
+    /**
+     * 提供了待处理的抽象语法树
+     */
+    private JavacTrees javacTrees;
+
+    /**
+     * 封装了创建AST节点的一些方法
+     */
+    private TreeMaker treeMaker;
+
+    /**
+     * 提供了创建标识符的方法
+     */
+    private Names names;
+
+    /**
+     * 初始化一些成员，方便下面使用
+     * @param processingEnv 环境
+     */
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
@@ -43,6 +65,12 @@ public class WriteLockProcessor extends AbstractProcessor {
         this.names = Names.instance(context);
     }
 
+    /**
+     * 将读锁编译进类的成员变量
+     * @param annotations 注解
+     * @param roundEnv 有关当前和以前round的环境信息，可以从这里拿到可以处理的所有元素信息
+     * @return true——则这些注解已声明并且不要求后续Processor处理它们；false——则这些注解未声明并且可能要求后续 Processor处理它们。
+     */
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement annotation : annotations) {
@@ -100,6 +128,10 @@ public class WriteLockProcessor extends AbstractProcessor {
         return Boolean.TRUE;
     }
 
+    /**
+     * 制作读写锁
+     * @return 读写锁变量声明
+     */
     private JCTree.JCVariableDecl makeReadWriteLock(){
         JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCTree.JCVariableDecl var = this.treeMaker.VarDef(
@@ -111,6 +143,10 @@ public class WriteLockProcessor extends AbstractProcessor {
         return var;
     }
 
+    /**
+     * 制作写锁
+     * @return 写锁变量声明
+     */
     private JCTree.JCVariableDecl makeWriteLock(){
         JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCTree.JCVariableDecl var = this.treeMaker.VarDef(
@@ -122,6 +158,11 @@ public class WriteLockProcessor extends AbstractProcessor {
         return var;
     }
 
+    /**
+     * 制作声明类型
+     * @param components 声明类型的带包类名
+     * @return 声明类型
+     */
     private JCTree.JCExpression memberAccess(String components) {
         String[] componentArray = components.split("\\.");
         JCTree.JCExpression expr = treeMaker.Ident(this.names.fromString(componentArray[0]));

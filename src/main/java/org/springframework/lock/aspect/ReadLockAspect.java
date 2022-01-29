@@ -9,12 +9,23 @@ import org.aspectj.lang.annotation.Aspect;
 import java.lang.reflect.Field;
 import java.util.concurrent.locks.Lock;
 
-
+/**
+ * 用于处理读锁的切面
+ */
 @Aspect
 public class ReadLockAspect {
 
+    /**
+     * 日志
+     */
     private static final Log LOGGER = LogFactory.getLog(ReadLockAspect.class);
 
+    /**
+     * 环绕通知
+     * @param jp 切入点
+     * @return 原函数返回值
+     * @throws Throwable 原函数异常
+     */
     @Around("@annotation(org.springframework.lock.annotation.ReadLock)")
     public Object aroundReadLock(ProceedingJoinPoint jp) throws Throwable {
         Object obj = jp.getTarget();
