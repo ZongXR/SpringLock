@@ -92,7 +92,7 @@
     </dependencies>
     <!--Springboot的maven插件-->
     <build>
-        <finalName>${project.artifactId}</finalName>
+        <finalName>${project.artifactId}-${project.version}</finalName>
 <!--        <plugins>-->
 <!--            <plugin>-->
 <!--                <groupId>org.springframework.boot</groupId>-->
@@ -117,14 +117,12 @@
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <configuration>
-                    <appendAssemblyId>false</appendAssemblyId>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
+                    <descriptors>
+                        <descriptor>assembly.xml</descriptor>
+                    </descriptors>
                     <archive>
                         <manifest>
-                            <!-- 此处指定main方法入口的class -->
-<!--                            <mainClass>com.xxx.Main</mainClass>-->
+                            <!--             指定入口类               -->
                         </manifest>
                     </archive>
                 </configuration>
