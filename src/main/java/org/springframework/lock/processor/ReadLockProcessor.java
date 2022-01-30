@@ -5,7 +5,6 @@ import com.google.auto.service.AutoService;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -16,12 +15,10 @@ import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static com.sun.tools.javac.tree.JCTree.*;
 import static com.sun.tools.javac.util.List.nil;
@@ -133,6 +130,7 @@ public class ReadLockProcessor extends AbstractProcessor {
 
     /**
      * 制作读写锁
+     * @param clz 要添加锁的类
      * @return 变量声明
      */
     private JCVariableDecl makeReadWriteLock(TypeElement clz){
@@ -152,6 +150,7 @@ public class ReadLockProcessor extends AbstractProcessor {
 
     /**
      * 制作读锁
+     * @param clz 要添加锁的类
      * @return 变量声明
      */
     private JCVariableDecl makeReadLock(TypeElement clz){

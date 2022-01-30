@@ -61,6 +61,14 @@ public class BaseService {
 
     @OptimisticLock
     public String testOptimisticLock(){
+        String name = Thread.currentThread().getName();
+        LOGGER.info(name + "开始执行");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        LOGGER.info(name + "执行结束");
         return "testOptimisticLock 执行结束";
     }
 }

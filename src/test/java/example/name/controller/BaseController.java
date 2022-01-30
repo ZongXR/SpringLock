@@ -34,4 +34,11 @@ public class BaseController {
         String result = this.baseService.testWriteLock();
         return result;
     }
+
+    @RequestMapping(value = "/testOptimisticLock", method = RequestMethod.GET)
+    @ResponseBody
+    public String testOptimisticLock(){
+        String result = this.baseService.testOptimisticLock();
+        return result;
+    }
 }

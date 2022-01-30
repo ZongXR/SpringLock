@@ -130,6 +130,7 @@ public class WriteLockProcessor extends AbstractProcessor {
 
     /**
      * 制作读写锁
+     * @param clz 要添加锁的类
      * @return 读写锁变量声明
      */
     private JCTree.JCVariableDecl makeReadWriteLock(TypeElement clz){
@@ -149,6 +150,7 @@ public class WriteLockProcessor extends AbstractProcessor {
 
     /**
      * 制作写锁
+     * @param clz 要添加锁的类
      * @return 写锁变量声明
      */
     private JCTree.JCVariableDecl makeWriteLock(TypeElement clz){

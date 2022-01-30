@@ -4,7 +4,6 @@ import com.google.auto.service.AutoService;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.api.JavacTrees;
 import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.code.TypeTag;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
@@ -17,7 +16,6 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import java.util.HashSet;
 import java.util.Set;
@@ -120,6 +118,7 @@ public class OptimisticLockProcessor extends AbstractProcessor {
 
     /**
      * 制作乐观锁
+     * @param clz 要添加锁的类
      * @return 变量声明
      */
     private JCVariableDecl makeOptimisticLock(TypeElement clz){
@@ -127,7 +126,7 @@ public class OptimisticLockProcessor extends AbstractProcessor {
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.atomic")), this.names.fromString("AtomicBoolean")), false));
         // 声明变量
-        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
+        JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.VOLATILE);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
                 this.names.fromString("$opLock"),
