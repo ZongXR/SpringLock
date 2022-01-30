@@ -59,7 +59,7 @@ public class BaseService {
         return "testWriteLock 执行结束";
     }
 
-//    @OptimisticLock
+    @OptimisticLock
     public String testOptimisticLock(){
         return "testOptimisticLock 执行结束";
     }
