@@ -112,14 +112,14 @@ public class ReadLockProcessor extends AbstractProcessor {
                             }
                         }
                         // 修改语法树
-                        JCVariableDecl lock = makeReadWriteLock();
-                        JCVariableDecl readLock = makeReadLock();
                         if (!foundReadWriteLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
+                            JCVariableDecl lock = makeReadWriteLock(clz);
                             jcClassDecl.defs = jcClassDecl.defs.append(lock);
                         }
                         if (!foundReadLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
+                            JCVariableDecl readLock = makeReadLock(clz);
                             jcClassDecl.defs = jcClassDecl.defs.append(readLock);
                         }
                         super.visitClassDef(jcClassDecl);
@@ -135,7 +135,11 @@ public class ReadLockProcessor extends AbstractProcessor {
      * 制作读写锁
      * @return 变量声明
      */
-    private JCVariableDecl makeReadWriteLock(){
+    private JCVariableDecl makeReadWriteLock(TypeElement clz){
+        // 导入包
+        JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
+        imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("ReentrantReadWriteLock")), false));
+        // 声明变量
         JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
@@ -150,7 +154,11 @@ public class ReadLockProcessor extends AbstractProcessor {
      * 制作读锁
      * @return 变量声明
      */
-    private JCVariableDecl makeReadLock(){
+    private JCVariableDecl makeReadLock(TypeElement clz){
+        // 导入包
+        JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
+        imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("Lock")), false));
+        // 声明变量
         JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,

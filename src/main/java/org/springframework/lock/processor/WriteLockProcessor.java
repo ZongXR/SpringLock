@@ -15,13 +15,13 @@ import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import java.util.HashSet;
 import java.util.Set;
 
 import static com.sun.tools.javac.util.List.nil;
+import static com.sun.tools.javac.tree.JCTree.*;
 
 /**
  * 写锁的处理器，用来将写锁编译进类的成员变量
@@ -109,14 +109,14 @@ public class WriteLockProcessor extends AbstractProcessor {
                             }
                         }
                         // 修改语法树
-                        JCTree.JCVariableDecl lock = makeReadWriteLock();
-                        JCTree.JCVariableDecl writeLock = makeWriteLock();
                         if (!foundReadWriteLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
+                            JCVariableDecl lock = makeReadWriteLock(clz);
                             jcClassDecl.defs = jcClassDecl.defs.append(lock);
                         }
                         if (!foundWriteLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁");
+                            JCVariableDecl writeLock = makeWriteLock(clz);
                             jcClassDecl.defs = jcClassDecl.defs.append(writeLock);
                         }
                         super.visitClassDef(jcClassDecl);
@@ -132,7 +132,11 @@ public class WriteLockProcessor extends AbstractProcessor {
      * 制作读写锁
      * @return 读写锁变量声明
      */
-    private JCTree.JCVariableDecl makeReadWriteLock(){
+    private JCTree.JCVariableDecl makeReadWriteLock(TypeElement clz){
+        // 导入包
+        JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
+        imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("ReentrantReadWriteLock")), false));
+        // 声明变量
         JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCTree.JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
@@ -147,7 +151,11 @@ public class WriteLockProcessor extends AbstractProcessor {
      * 制作写锁
      * @return 写锁变量声明
      */
-    private JCTree.JCVariableDecl makeWriteLock(){
+    private JCTree.JCVariableDecl makeWriteLock(TypeElement clz){
+        // 导入包
+        JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
+        imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("Lock")), false));
+        // 声明变量
         JCTree.JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCTree.JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,

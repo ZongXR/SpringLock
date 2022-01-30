@@ -2,13 +2,12 @@ package example.name.service;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.springframework.lock.annotation.OptimisticLock;
 import org.springframework.lock.annotation.ReadLock;
 import org.springframework.lock.annotation.Synchronized;
 import org.springframework.lock.annotation.WriteLock;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class BaseService {
@@ -58,5 +57,10 @@ public class BaseService {
         }
         LOGGER.info(name + "执行结束");
         return "testWriteLock 执行结束";
+    }
+
+//    @OptimisticLock
+    public String testOptimisticLock(){
+        return "testOptimisticLock 执行结束";
     }
 }
