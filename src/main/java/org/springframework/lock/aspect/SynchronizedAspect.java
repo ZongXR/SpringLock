@@ -31,25 +31,17 @@ public class SynchronizedAspect {
     @Around(value = "@annotation(org.springframework.lock.annotation.Synchronized)")
     public Object aroundSynchronized(ProceedingJoinPoint jp) throws Throwable {
         Class<?> clz = jp.getTarget().getClass();
-        Object lock = null;
+        Object lock = clz;
         MethodSignature signature = (MethodSignature) jp.getSignature();
         Method method = signature.getMethod();
-        boolean foundField = false;
-        if (method == null)
-            lock = clz;
-        else {
+        if (method != null) {
             Synchronized annotation = method.getAnnotation(Synchronized.class);
-            if (annotation == null)
-                lock = clz;
-            else{
+            if (annotation != null){
                 String varName = annotation.value();
-                if ("".equals(varName))
-                    lock = clz;
-                else {
+                if (!"".equals(varName)) {
                     for (Field field : clz.getDeclaredFields()) {
                         field.setAccessible(true);
                         if (varName.equals(field.getName())){
-                            foundField = true;
                             lock = field.get(jp.getTarget());
                             break;
                         }
@@ -57,8 +49,6 @@ public class SynchronizedAspect {
                 }
             }
         }
-        if (!foundField)
-            lock = clz;
         Object result = null;
         synchronized (lock) {
             LOGGER.info(clz.getSimpleName() + "获得互斥锁");
