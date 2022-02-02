@@ -1,6 +1,10 @@
 package org.springframework.lock.annotation;
 
+import org.springframework.lock.enumeration.BooleanEnum;
+
 import java.lang.annotation.*;
+
+import static org.springframework.lock.enumeration.BooleanEnum.*;
 
 /**
  * 读锁
@@ -11,8 +15,8 @@ import java.lang.annotation.*;
 public @interface ReadLock {
 
     /**
-     * 是否是公平锁
-     * @return 默认非公平
+     * 是否公平锁
+     * @return 默认null，如果有自定义值则覆盖默认值
      */
-    boolean fair() default false;
+    BooleanEnum fair() default NULL;
 }

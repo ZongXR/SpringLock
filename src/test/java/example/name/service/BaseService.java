@@ -8,6 +8,8 @@ import org.springframework.lock.annotation.Synchronized;
 import org.springframework.lock.annotation.WriteLock;
 import org.springframework.stereotype.Service;
 
+import static org.springframework.lock.enumeration.BooleanEnum.*;
+
 
 @Service
 public class BaseService {
@@ -33,7 +35,7 @@ public class BaseService {
         return "testSynchronized 执行结束";
     }
 
-    @ReadLock(fair = true)
+    @ReadLock
     public String testReadLock() {
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
@@ -46,7 +48,7 @@ public class BaseService {
         return "testReadLock 执行结束";
     }
 
-    @WriteLock(fair = true)
+    @WriteLock(fair = TRUE)
     public String testWriteLock(){
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
