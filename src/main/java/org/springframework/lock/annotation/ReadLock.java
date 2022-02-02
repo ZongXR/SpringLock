@@ -9,4 +9,10 @@ import java.lang.annotation.*;
 @Target(ElementType.METHOD)
 @Documented
 public @interface ReadLock {
+
+    /**
+     * 是否是公平锁
+     * @return 默认非公平
+     */
+    boolean fair() default false;
 }

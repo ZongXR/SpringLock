@@ -10,6 +10,7 @@ import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Names;
+import org.springframework.lock.annotation.WriteLock;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -17,11 +18,14 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static com.sun.tools.javac.util.List.nil;
 import static com.sun.tools.javac.tree.JCTree.*;
+import static com.sun.tools.javac.util.List.of;
 
 /**
  * 写锁的处理器，用来将写锁编译进类的成员变量
@@ -76,10 +80,16 @@ public class WriteLockProcessor extends AbstractProcessor {
         for (TypeElement annotation : annotations) {
             Set<TypeElement> cls = new HashSet<TypeElement>();
             Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(annotation);
+            Map<TypeElement, Map<String, Object>> map = new HashMap<>();
             // 找到都有哪些类里面的方法用到了这个注解
             for (Element element : elements) {
                 ExecutableElement method = (ExecutableElement) element;
                 TypeElement clz = (TypeElement) method.getEnclosingElement();
+                Map<String, Object> properties = new HashMap<>();
+                WriteLock anno = method.getAnnotation(WriteLock.class);
+                properties.put("fair", anno.fair());
+                if (!map.containsKey(clz))
+                    map.put(clz, properties);
                 messager.printMessage(Diagnostic.Kind.NOTE, "发现需要包含注解" + annotation.getQualifiedName() + "的类" + clz.getQualifiedName());
                 cls.add(clz);
             }
@@ -111,7 +121,7 @@ public class WriteLockProcessor extends AbstractProcessor {
                         // 修改语法树
                         if (!foundReadWriteLock) {
                             messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
-                            JCVariableDecl lock = makeReadWriteLock(clz);
+                            JCVariableDecl lock = makeReadWriteLock(clz, map.get(clz));
                             jcClassDecl.defs = jcClassDecl.defs.append(lock);
                         }
                         if (!foundWriteLock) {
@@ -133,7 +143,7 @@ public class WriteLockProcessor extends AbstractProcessor {
      * @param clz 要添加锁的类
      * @return 读写锁变量声明
      */
-    private JCTree.JCVariableDecl makeReadWriteLock(TypeElement clz){
+    private JCTree.JCVariableDecl makeReadWriteLock(TypeElement clz, Map<String, Object> properties){
         // 导入包
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("ReentrantReadWriteLock")), false));
@@ -143,7 +153,7 @@ public class WriteLockProcessor extends AbstractProcessor {
                 modifiers,
                 this.names.fromString("$lock"),
                 this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
-                this.treeMaker.NewClass(null, nil(), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), nil(), null)
+                this.treeMaker.NewClass(null, of(memberAccess("java.lang.Boolean")), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), of(this.treeMaker.Literal(properties.get("fair"))), null)
         );
         return var;
     }

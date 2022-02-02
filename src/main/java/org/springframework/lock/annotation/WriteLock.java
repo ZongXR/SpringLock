@@ -9,4 +9,10 @@ import java.lang.annotation.*;
 @Target(ElementType.METHOD)
 @Documented
 public @interface WriteLock {
+
+    /**
+     * 是否是公平锁
+     * @return 默认非公平锁
+     */
+    boolean fair() default false;
 }

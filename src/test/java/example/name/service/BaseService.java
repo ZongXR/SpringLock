@@ -33,7 +33,7 @@ public class BaseService {
         return "testSynchronized 执行结束";
     }
 
-    @ReadLock
+    @ReadLock(fair = true)
     public String testReadLock() {
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
@@ -46,7 +46,7 @@ public class BaseService {
         return "testReadLock 执行结束";
     }
 
-    @WriteLock
+    @WriteLock(fair = true)
     public String testWriteLock(){
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
