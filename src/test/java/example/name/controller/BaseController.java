@@ -28,6 +28,13 @@ public class BaseController {
         return result;
     }
 
+    @RequestMapping(value = "/testWriteLock2", method = RequestMethod.GET)
+    @ResponseBody
+    public String testWriteLock2(){
+        String result = this.baseService.testWriteLock2();
+        return result;
+    }
+
     @RequestMapping(value = "/testWriteLock", method = RequestMethod.GET)
     @ResponseBody
     public String testWriteLock(){

@@ -4,6 +4,6 @@
  * 它的原理与lombok有些许类似，但代码风格比lombok更好理解，一看就懂
  * 每个处理器都写了注释，写得都很清楚，不加以赘述
  * @author 宗祥瑞
- * @version 0.8.0.0
+ * @version 0.8.1.0
  */
 package org.springframework.lock.processor;

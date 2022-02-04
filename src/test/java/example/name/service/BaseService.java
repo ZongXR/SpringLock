@@ -48,12 +48,25 @@ public class BaseService {
         return "testReadLock 执行结束";
     }
 
-    @WriteLock
-    public String testWriteLock(){
+    @WriteLock(fair = TRUE, waitTime = 3000, executeTime = 60000, isContinueIfElapsed = true, withLockIfContinue = true)
+    public String testWriteLock2(){
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
         try {
             Thread.sleep(500000000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        LOGGER.info(name + "执行结束");
+        return "testWriteLock2 执行结束";
+    }
+
+    @WriteLock(waitTime = 3000, executeTime = 60000, isContinueIfElapsed = true, withLockIfContinue = true)
+    public String testWriteLock(){
+        String name = Thread.currentThread().getName();
+        LOGGER.info(name + "开始执行");
+        try {
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

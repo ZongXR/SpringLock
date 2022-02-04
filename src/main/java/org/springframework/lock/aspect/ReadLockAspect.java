@@ -15,7 +15,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.util.concurrent.TimeUnit.*;
-import static java.util.concurrent.locks.ReentrantReadWriteLock.*;
 
 /**
  * 用于处理读锁的切面
@@ -39,26 +38,21 @@ public class ReadLockAspect {
         Object obj = jp.getTarget();
         Class<?> clz = obj.getClass();
         Lock readLock = null;
-        Lock writeLock = null;
         ReentrantReadWriteLock lock = null;
         for (Field field : clz.getDeclaredFields()) {
             if ("$readLock".equals(field.getName())){
                 field.setAccessible(true);
                 readLock = (Lock) field.get(obj);
             }
-            if ("$writeLock".equals(field.getName())){
-                field.setAccessible(true);
-                writeLock = (Lock) field.get(obj);
-            }
             if ("$lock".equals(field.getName())){
                 field.setAccessible(true);
                 lock = (ReentrantReadWriteLock) field.get(obj);
             }
-            if (lock != null && readLock != null && writeLock != null)
+            if (lock != null && readLock != null)
                 // 都找到了
                 break;
         }
-        if (readLock == null || lock == null || writeLock == null){
+        if (readLock == null || lock == null){
             // 连锁都没拿到，说明编译期间出了问题
             LOGGER.warn(clz.getSimpleName() + "编译时生成读写锁锁失败,未能加锁");
             return jp.proceed();
@@ -95,10 +89,16 @@ public class ReadLockAspect {
                     Method getOwner = ReentrantReadWriteLock.class.getDeclaredMethod("getOwner");
                     getOwner.setAccessible(true);
                     Thread lockedThread = (Thread) getOwner.invoke(lock);
-                    lockedThread.stop();
-                    LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得锁");
+                    lockedThread.interrupt();
                     if (readLock.tryLock(waitTime, MILLISECONDS)){
+                        LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得锁");
                         result = this.processMethod(jp, readLock, executeTime);
+                    }else{
+                        lockedThread.stop();
+                        if (readLock.tryLock(waitTime, MILLISECONDS)){
+                            LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得锁");
+                            result = this.processMethod(jp, readLock, executeTime);
+                        }
                     }
                 }else {
                     LOGGER.warn("等待时间耗尽，将不带锁执行" + method.getName());
