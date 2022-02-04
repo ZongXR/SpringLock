@@ -41,12 +41,12 @@ public class WriteLockAspect {
         Object result = null;
         if (writeLock != null) {
             writeLock.lock();
+            LOGGER.info(clz.getSimpleName() + "获得写锁");
             try {
-                LOGGER.info(clz.getSimpleName() + "获得写锁");
                 result = jp.proceed();
-                LOGGER.info(clz.getSimpleName() + "释放写锁");
             } finally {
                 writeLock.unlock();
+                LOGGER.info(clz.getSimpleName() + "释放写锁");
             }
         }else {
             LOGGER.warn(clz.getSimpleName() + "生成读锁失败,未能加锁");

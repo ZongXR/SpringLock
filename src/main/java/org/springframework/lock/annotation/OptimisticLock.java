@@ -12,7 +12,7 @@ import java.lang.annotation.*;
 public @interface OptimisticLock {
 
     /**
-     * 乐观锁忙等待毫秒数
+     * 乐观锁忙等待周期毫秒数
      * @return 乐观锁忙等待时间
      */
     long value() default 500L;

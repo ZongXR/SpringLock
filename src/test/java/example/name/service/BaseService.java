@@ -35,7 +35,7 @@ public class BaseService {
         return "testSynchronized 执行结束";
     }
 
-    @ReadLock
+    @ReadLock(waitTime = 3000, executeTime = 60000, isContinueIfElapsed = true, withLockIfContinue = true)
     public String testReadLock() {
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
@@ -48,12 +48,12 @@ public class BaseService {
         return "testReadLock 执行结束";
     }
 
-    @WriteLock(fair = TRUE)
+    @WriteLock
     public String testWriteLock(){
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
         try {
-            Thread.sleep(5000);
+            Thread.sleep(500000000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
