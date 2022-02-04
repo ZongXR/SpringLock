@@ -15,7 +15,13 @@ import static org.springframework.lock.enumeration.BooleanEnum.*;
 public @interface ReadLock {
 
     /**
-     * 是否公平锁
+     * 读写锁变量的名称，该变量必须是{@code ReentrantReadWriteLock}类的对象或其子类对象
+     * @return 默认使用编译生成的
+     */
+    String value() default "";
+
+    /**
+     * 编译时生成的是否公平锁，该属性仅在{@code value}属性保持默认时才生效
      * @return 默认null，如果有自定义值则覆盖默认值
      */
     BooleanEnum fair() default NULL;

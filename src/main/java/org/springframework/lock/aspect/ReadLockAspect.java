@@ -8,6 +8,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.lock.annotation.ReadLock;
 import org.springframework.lock.timer.InterruptTimer;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,49 +36,52 @@ public class ReadLockAspect {
      */
     @Around("@annotation(org.springframework.lock.annotation.ReadLock)")
     public Object aroundReadLock(ProceedingJoinPoint jp) throws Throwable {
-        Object obj = jp.getTarget();
-        Class<?> clz = obj.getClass();
-        Lock readLock = null;
-        ReentrantReadWriteLock lock = null;
-        for (Field field : clz.getDeclaredFields()) {
-            if ("$readLock".equals(field.getName())){
-                field.setAccessible(true);
-                readLock = (Lock) field.get(obj);
-            }
-            if ("$lock".equals(field.getName())){
-                field.setAccessible(true);
-                lock = (ReentrantReadWriteLock) field.get(obj);
-            }
-            if (lock != null && readLock != null)
-                // 都找到了
-                break;
-        }
-        if (readLock == null || lock == null){
-            // 连锁都没拿到，说明编译期间出了问题
-            LOGGER.warn(clz.getSimpleName() + "编译时生成读写锁锁失败,未能加锁");
-            return jp.proceed();
-        }
-
+        // 获取注解的属性
         long waitTime = Long.MAX_VALUE;
         long executeTime = Long.MAX_VALUE;
         boolean isContinueIfElapsed = false;
         boolean withLockIfContinue = false;
+        String lockName = null;
 
         MethodSignature signature = (MethodSignature) jp.getSignature();
         Method method = signature.getMethod();
-        if (method == null) {
-            // 没拿到方法，那注解给了谁呢？
-            LOGGER.warn("没拿到方法" + signature);
-            return jp.proceed();
-        }
         ReadLock annotation = method.getAnnotation(ReadLock.class);
         if (annotation != null) {
             waitTime = annotation.waitTime();
             executeTime = annotation.executeTime();
             isContinueIfElapsed = annotation.isContinueIfElapsed();
             withLockIfContinue = annotation.withLockIfContinue();
+            lockName = annotation.value();
         }
 
+        // 获取锁对象
+        Lock readLock = null;
+        ReentrantReadWriteLock lock = null;
+        Object obj = jp.getTarget();
+        Class<?> clz = obj.getClass();
+        Field field = null;
+
+        if (StringUtils.hasText(lockName)){
+            field = clz.getDeclaredField(lockName);
+            field.setAccessible(true);
+            lock = (ReentrantReadWriteLock) field.get(obj);
+            readLock = lock.readLock();
+        }else {
+            field = clz.getDeclaredField("$readLock");
+            field.setAccessible(true);
+            readLock = (Lock) field.get(obj);
+            field = clz.getDeclaredField("$lock");
+            field.setAccessible(true);
+            lock = (ReentrantReadWriteLock) field.get(obj);
+        }
+
+        if (readLock == null || lock == null){
+            // 连锁都没拿到，说明编译期间出了问题
+            LOGGER.warn(clz.getSimpleName() + "获取锁错误，请检查锁名称是否正确");
+            return jp.proceed();
+        }
+
+        // 尝试加锁，不行就结束掉别人的线程
         Object result = null;
         boolean locked = readLock.tryLock(waitTime, MILLISECONDS);
         if (locked) {
@@ -91,12 +95,12 @@ public class ReadLockAspect {
                     Thread lockedThread = (Thread) getOwner.invoke(lock);
                     lockedThread.interrupt();
                     if (readLock.tryLock(waitTime, MILLISECONDS)){
-                        LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得锁");
+                        LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得读锁" + readLock);
                         result = this.processMethod(jp, readLock, executeTime);
                     }else{
                         lockedThread.stop();
                         if (readLock.tryLock(waitTime, MILLISECONDS)){
-                            LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得锁");
+                            LOGGER.warn("等待时间耗尽，终止线程" + lockedThread + "以强制获得读锁" + readLock);
                             result = this.processMethod(jp, readLock, executeTime);
                         }
                     }
@@ -105,7 +109,7 @@ public class ReadLockAspect {
                     result = jp.proceed();
                 }
             }else {
-                LOGGER.warn("等待时间耗尽，将不执行" + method.getName());
+                LOGGER.warn("等待时间耗尽，放弃执行" + method.getName());
             }
         }
         return result;
@@ -121,13 +125,13 @@ public class ReadLockAspect {
      */
     private Object processMethod(ProceedingJoinPoint jp, Lock readLock, long executeTime) throws Throwable {
         Object result = null;
-        LOGGER.info(Thread.currentThread().getName() + "获得读锁");
+        LOGGER.info(Thread.currentThread().getName() + "获得读锁" + readLock);
         new InterruptTimer(Thread.currentThread(), executeTime);
         try {
             result = jp.proceed();
         } finally {
             readLock.unlock();
-            LOGGER.info(Thread.currentThread().getName() + "释放读锁");
+            LOGGER.info(Thread.currentThread().getName() + "释放读锁" + readLock);
         }
         return result;
     }
