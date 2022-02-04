@@ -126,7 +126,8 @@ public class ReadLockAspect {
     private Object processMethod(ProceedingJoinPoint jp, Lock readLock, long executeTime) throws Throwable {
         Object result = null;
         LOGGER.info(Thread.currentThread().getName() + "获得读锁" + readLock);
-        new InterruptTimer(Thread.currentThread(), executeTime);
+        if (System.currentTimeMillis() + executeTime > 0)
+            new InterruptTimer(Thread.currentThread(), executeTime);
         try {
             result = jp.proceed();
         } finally {

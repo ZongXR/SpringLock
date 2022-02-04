@@ -45,7 +45,7 @@ public @interface WriteLock {
     boolean isContinueIfElapsed() default false;
 
     /**
-     * 如果强制执行，是否中断其他线程以强制获得锁
+     * 如果强制执行，是否中断其他线程以强制获得锁. 该属性仅在{@code isContinueIfElapsed}为{@code true}时才生效
      * @return 默认否
      */
     boolean withLockIfContinue() default false;

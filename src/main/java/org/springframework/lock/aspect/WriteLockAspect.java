@@ -127,7 +127,8 @@ public class WriteLockAspect {
     private Object processMethod(ProceedingJoinPoint jp, Lock writeLock, long executeTime) throws Throwable {
         Object result = null;
         LOGGER.info(Thread.currentThread().getName() + "获得写锁" + writeLock);
-        new InterruptTimer(Thread.currentThread(), executeTime);
+        if (System.currentTimeMillis() + executeTime > 0)
+            new InterruptTimer(Thread.currentThread(), executeTime);
         try {
             result = jp.proceed();
         } finally {

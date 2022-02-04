@@ -42,6 +42,13 @@ public class BaseController {
         return result;
     }
 
+    @RequestMapping(value = "/testOptimisticLock2", method = RequestMethod.GET)
+    @ResponseBody
+    public String testOptimisticLock2(){
+        String result = this.baseService.testOptimisticLock2();
+        return result;
+    }
+
     @RequestMapping(value = "/testOptimisticLock", method = RequestMethod.GET)
     @ResponseBody
     public String testOptimisticLock(){
