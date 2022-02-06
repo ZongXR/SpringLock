@@ -9,6 +9,7 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.*;
+import org.springframework.lock.annotation.MakeReadWriteLocks;
 import org.springframework.lock.annotation.ReadLock;
 import org.springframework.lock.annotation.WriteLock;
 
@@ -117,6 +118,8 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
         }
         // 对每一个涉及到的类添加锁成员
         for (TypeElement clz : cls) {
+            MakeReadWriteLocks makeReadWriteLocks = clz.getAnnotation(MakeReadWriteLocks.class);
+            String[] makeLocks = makeReadWriteLocks != null ? makeReadWriteLocks.value() : new String[]{};
             JCTree tree = javacTrees.getTree(clz);
             tree.accept(new TreeTranslator() {
                 @Override
@@ -130,15 +133,25 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
                             trees = trees.append(x);
                     }
                     jcClassDecl.defs = trees;
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁");
-                    JCVariableDecl lock = makeReadWriteLock(clz, map.get(clz));
+                    // 生成$读写锁
+                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁$lock");
+                    JCVariableDecl lock = makeReadWriteLock(clz, "$lock", map.get(clz));
                     jcClassDecl.defs = jcClassDecl.defs.append(lock);
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁");
-                    JCVariableDecl readLock = makeReadLock(clz);
+                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁$readLock");
+                    JCVariableDecl readLock = makeReadLock(clz, "$readLock");
                     jcClassDecl.defs = jcClassDecl.defs.append(readLock);
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁");
-                    JCVariableDecl writeLock = makeWriteLock(clz);
+                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁$writeLock");
+                    JCVariableDecl writeLock = makeWriteLock(clz, "$writeLock");
                     jcClassDecl.defs = jcClassDecl.defs.append(writeLock);
+                    // 生成make读写锁
+                    for (String makeLock : makeLocks) {
+                        if (makeLock.length() == 0)
+                            continue;
+                        messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁" + makeLock);
+                        JCVariableDecl make = makeReadWriteLock(clz, makeLock, map.get(clz));
+                        jcClassDecl.defs = jcClassDecl.defs.append(make);
+                    }
+
                     super.visitClassDef(jcClassDecl);
                 }
             });
@@ -149,10 +162,11 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
     /**
      * 制作读写锁
      * @param clz 要添加锁的类
+     * @param lockName 变量名称
      * @param properties 注解的属性
      * @return 变量声明
      */
-    private JCVariableDecl makeReadWriteLock(TypeElement clz, Map<String, Object> properties) {
+    private JCVariableDecl makeReadWriteLock(TypeElement clz, String lockName, Map<String, Object> properties) {
         // 导入包
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("ReentrantReadWriteLock")), false));
@@ -161,7 +175,7 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
         if (properties.get("fair") != null)
             return this.treeMaker.VarDef(
                     modifiers,
-                    this.names.fromString("$lock"),
+                    this.names.fromString(lockName),
                     this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
                     this.treeMaker.NewClass(null, of(memberAccess("java.lang.Boolean")), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), of(this.treeMaker.Literal(properties.get("fair"))), null)
             );
@@ -177,9 +191,10 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
     /**
      * 制作读锁
      * @param clz 要添加锁的类
+     * @param lockName 变量名称
      * @return 变量声明
      */
-    private JCVariableDecl makeReadLock(TypeElement clz) {
+    private JCVariableDecl makeReadLock(TypeElement clz, String lockName) {
         // 导入包
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("Lock")), false));
@@ -187,7 +202,7 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
         JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
-                this.names.fromString("$readLock"),
+                this.names.fromString(lockName),
                 this.memberAccess("java.util.concurrent.locks.Lock"),
                 treeMaker.Apply(nil(), treeMaker.Select(treeMaker.Ident(names.fromString("$lock")), names.fromString("readLock")), nil())
         );
@@ -197,9 +212,10 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
     /**
      * 制作写锁
      * @param clz 要添加锁的类
+     * @param lockName 变量名称
      * @return 写锁变量声明
      */
-    private JCVariableDecl makeWriteLock(TypeElement clz){
+    private JCVariableDecl makeWriteLock(TypeElement clz, String lockName){
         // 导入包
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("Lock")), false));
@@ -207,7 +223,7 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
         JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
         JCVariableDecl var = this.treeMaker.VarDef(
                 modifiers,
-                this.names.fromString("$writeLock"),
+                this.names.fromString(lockName),
                 this.memberAccess("java.util.concurrent.locks.Lock"),
                 treeMaker.Apply(nil(), treeMaker.Select(treeMaker.Ident(names.fromString("$lock")), names.fromString("writeLock")), nil())
         );

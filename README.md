@@ -82,4 +82,7 @@
 <tr>
 <td>1.0.0.0</td><td>修复时长溢出的BUG;完善乐观锁，现在可以使用自定义的乐观锁，并指定最长等待时间、最长执行时间、是否强制执行等，全方位避免死锁</td><td>2022年2月5日</td>
 </tr>
+<tr>
+<td>1.1.0.0</td><td>新增注解<code>@MakeReadWriteLocks</code>用于对类生成自定义读写锁，其<code>fair</code>属性来自于注解的类下<code>@ReadLock</code>注解或<code>@WriteLock</code>注解的<code>fair</code>属性值</td><td>2022年2月6日</td>
+</tr>
 </table>

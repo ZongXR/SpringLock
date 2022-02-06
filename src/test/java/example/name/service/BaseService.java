@@ -2,16 +2,18 @@ package example.name.service;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.lock.annotation.OptimisticLock;
-import org.springframework.lock.annotation.ReadLock;
-import org.springframework.lock.annotation.Synchronized;
-import org.springframework.lock.annotation.WriteLock;
+import org.springframework.lock.annotation.*;
 import org.springframework.stereotype.Service;
 
 import static org.springframework.lock.enumeration.BooleanEnum.*;
 
 
 @Service
+@MakeReadWriteLocks({
+        "myLock1",
+        "myLock2",
+        "myLock3"
+})
 public class BaseService {
 
     private static final Log LOGGER = LogFactory.getLog(BaseService.class);
@@ -98,5 +100,31 @@ public class BaseService {
         }
         LOGGER.info(name + "执行结束");
         return "testOptimisticLock2 执行结束";
+    }
+
+    @ReadLock("myLock1")
+    public String testMakeLockRead(){
+        String name = Thread.currentThread().getName();
+        LOGGER.info(name + "开始执行");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        LOGGER.info(name + "执行结束");
+        return "testMakeLockRead 执行结束";
+    }
+
+    @WriteLock("myLock1")
+    public String testMakeLockWrite(){
+        String name = Thread.currentThread().getName();
+        LOGGER.info(name + "开始执行");
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        LOGGER.info(name + "执行结束");
+        return "testMakeLockWrite 执行结束";
     }
 }
