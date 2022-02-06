@@ -80,7 +80,6 @@ public class OptimisticLockProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement annotation : annotations) {
-            Set<TypeElement> cls = new HashSet<TypeElement>();
             Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(annotation);
             // 找到都有哪些类里面的方法用到了这个注解
             Map<TypeElement, List<String>> map = new HashMap<TypeElement, List<String>>();
@@ -89,11 +88,10 @@ public class OptimisticLockProcessor extends AbstractProcessor {
                 String varName = method.getAnnotation(OptimisticLock.class).value();
                 TypeElement clz = (TypeElement) method.getEnclosingElement();
                 messager.printMessage(Diagnostic.Kind.NOTE, "发现需要包含注解" + annotation.getQualifiedName() + "的类" + clz.getQualifiedName());
-                cls.add(clz);
                 map.computeIfAbsent(clz, k -> nil());
                 map.computeIfPresent(clz, (k, v) -> v.append(varName));
             }
-            for (TypeElement clz : cls) {
+            for (TypeElement clz : map.keySet()) {
                 List<String> lockNames = map.get(clz);
                 if (lockNames.contains("")){
                     lockNames = List.filter(lockNames, "");
@@ -112,7 +110,7 @@ public class OptimisticLockProcessor extends AbstractProcessor {
                                 JCVariableDecl var = (JCVariableDecl) jcTree;
                                 if (locks.contains("" + var.name)) {
                                     // 找到了类中的乐观锁，舍弃掉
-                                    messager.printMessage(Diagnostic.Kind.NOTE, "已发现" + clz.getQualifiedName() + "类中的乐观锁" + var.name);
+                                    messager.printMessage(Diagnostic.Kind.WARNING, "已发现" + clz.getQualifiedName() + "类中的同名变量" + var.name + ", 将进行替换");
                                 }else{
                                     tree = tree.append(jcTree);
                                 }

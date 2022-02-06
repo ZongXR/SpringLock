@@ -9,11 +9,6 @@ import static org.springframework.lock.enumeration.BooleanEnum.*;
 
 
 @Service
-@MakeReadWriteLocks({
-        "myLock1",
-        "myLock2",
-        "myLock3"
-})
 public class BaseService {
 
     private static final Log LOGGER = LogFactory.getLog(BaseService.class);
@@ -102,10 +97,11 @@ public class BaseService {
         return "testOptimisticLock2 执行结束";
     }
 
-    @ReadLock("myLock1")
+    @ReadLock(value = "myLock1", fair = FALSE)
     public String testMakeLockRead(){
         String name = Thread.currentThread().getName();
         LOGGER.info(name + "开始执行");
+//        System.out.println("" + myLock1.isFair());
         try {
             Thread.sleep(5000);
         } catch (InterruptedException e) {

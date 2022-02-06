@@ -161,6 +161,7 @@ public class OptimisticLockAspect {
      * @param waitTime 最长等待时长
      * @param pollingTime 轮询周期
      * @return 是否获得锁
+     * @throws InterruptedException 中断异常
      */
     private boolean tryLock(AtomicLong lock, long waitTime, long pollingTime) throws InterruptedException {
         long startWaitTime = System.currentTimeMillis();

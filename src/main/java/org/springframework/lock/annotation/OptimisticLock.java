@@ -12,7 +12,7 @@ import java.lang.annotation.*;
 public @interface OptimisticLock {
 
     /**
-     * 乐观锁变量的名称
+     * 乐观锁变量的名称，该变量必须是合法变量名。如果与现有变量冲突，则替换掉现有变量
      * @return 默认使用自动生成的锁
      */
     String value() default "";

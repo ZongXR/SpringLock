@@ -9,9 +9,9 @@ import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.tree.TreeTranslator;
 import com.sun.tools.javac.util.*;
-import org.springframework.lock.annotation.MakeReadWriteLocks;
 import org.springframework.lock.annotation.ReadLock;
 import org.springframework.lock.annotation.WriteLock;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -83,43 +83,36 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (annotations.size() == 0)
             return Boolean.TRUE;
-        Set<TypeElement> cls = new HashSet<TypeElement>();
-        Map<TypeElement, Map<String, Object>> map = new HashMap<TypeElement, Map<String, Object>>();
+        Map<TypeElement, Map<String, Boolean>> lockProperties = new HashMap<TypeElement, Map<String, Boolean>>();
         for (TypeElement annotation : annotations) {
             Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(annotation);
             // 找到都有哪些类里面的方法用到了这个注解
             for (Element element : elements) {
                 ExecutableElement method = (ExecutableElement) element;
                 TypeElement clz = (TypeElement) method.getEnclosingElement();
-                messager.printMessage(Diagnostic.Kind.NOTE, "发现需要包含注解" + annotation.getQualifiedName() + "的类" + clz.getQualifiedName());
+                lockProperties.putIfAbsent(clz, new HashMap<String, Boolean>());
+                messager.printMessage(Diagnostic.Kind.NOTE, "发现包含注解" + annotation.getQualifiedName() + "的类" + clz.getQualifiedName());
                 Boolean isFair = null;
+                String lockName = null;
                 if (("" + annotation).equals("org.springframework.lock.annotation.ReadLock")) {
                     // 如果方法注解了读锁
                     isFair = method.getAnnotation(ReadLock.class).fair().getValue();
+                    lockName = method.getAnnotation(ReadLock.class).value();
                 }
                 if (("" + annotation).equals("org.springframework.lock.annotation.WriteLock")) {
                     // 如果方法注解了写锁
                     isFair = method.getAnnotation(WriteLock.class).fair().getValue();
+                    lockName = method.getAnnotation(WriteLock.class).value();
                 }
-                if (isFair != null) {
-                    Boolean finalIsFair = isFair;
-                    map.put(clz, new HashMap<String, Object>(){{
-                        put("fair", finalIsFair);
-                    }});
-                }else {
-                    if (map.get(clz) == null || map.get(clz).get("fair") == null){
-                        map.put(clz, new HashMap<String, Object>(){{
-                            put("fair", null);
-                        }});
-                    }
-                }
-                cls.add(clz);
+                if (!StringUtils.hasText(lockName))
+                    lockName = "$lock";
+                if (isFair != null)
+                    lockProperties.get(clz).put(lockName, isFair);
+                lockProperties.get(clz).putIfAbsent(lockName, null);
             }
         }
         // 对每一个涉及到的类添加锁成员
-        for (TypeElement clz : cls) {
-            MakeReadWriteLocks makeReadWriteLocks = clz.getAnnotation(MakeReadWriteLocks.class);
-            String[] makeLocks = makeReadWriteLocks != null ? makeReadWriteLocks.value() : new String[]{};
+        for (TypeElement clz : lockProperties.keySet()) {
             JCTree tree = javacTrees.getTree(clz);
             tree.accept(new TreeTranslator() {
                 @Override
@@ -127,29 +120,25 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
                     // 在抽象树中过滤掉已有的的变量
                     List<JCTree> trees = nil();
                     for (JCTree x : jcClassDecl.defs) {
-                        if (x.getKind().equals(Kind.VARIABLE) && ("$lock".equals("" + ((JCVariableDecl) x).name) || "$readLock".equals("" + ((JCVariableDecl) x).name) || "$writeLock".equals("" + ((JCVariableDecl) x).name)))
+                        if (x.getKind().equals(Kind.VARIABLE) && lockProperties.get(clz).containsKey("" + ((JCVariableDecl) x).name))
                             messager.printMessage(Diagnostic.Kind.WARNING, "已删除变量声明" + ((JCVariableDecl) x).name + ", 因为这个变量与生成的锁变量重名了");
                         else
                             trees = trees.append(x);
                     }
                     jcClassDecl.defs = trees;
-                    // 生成$读写锁
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁$lock");
-                    JCVariableDecl lock = makeReadWriteLock(clz, "$lock", map.get(clz));
-                    jcClassDecl.defs = jcClassDecl.defs.append(lock);
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁$readLock");
-                    JCVariableDecl readLock = makeReadLock(clz, "$readLock");
-                    jcClassDecl.defs = jcClassDecl.defs.append(readLock);
-                    messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁$writeLock");
-                    JCVariableDecl writeLock = makeWriteLock(clz, "$writeLock");
-                    jcClassDecl.defs = jcClassDecl.defs.append(writeLock);
-                    // 生成make读写锁
-                    for (String makeLock : makeLocks) {
-                        if (makeLock.length() == 0)
-                            continue;
-                        messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁" + makeLock);
-                        JCVariableDecl make = makeReadWriteLock(clz, makeLock, map.get(clz));
-                        jcClassDecl.defs = jcClassDecl.defs.append(make);
+                    // 生成读写锁
+                    for (String varName : lockProperties.get(clz).keySet()) {
+                        messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读写锁" + varName);
+                        JCVariableDecl lock = makeReadWriteLock(clz, varName, lockProperties.get(clz).get(varName));
+                        jcClassDecl.defs = jcClassDecl.defs.prepend(lock);
+                        if ("$lock".equals(varName)){
+                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成读锁$readLock");
+                            JCVariableDecl readLock = makeReadLock(clz, "$readLock");
+                            jcClassDecl.defs = jcClassDecl.defs.append(readLock);
+                            messager.printMessage(Diagnostic.Kind.NOTE, "将为类" + clz.getQualifiedName() + "动态生成写锁$writeLock");
+                            JCVariableDecl writeLock = makeWriteLock(clz, "$writeLock");
+                            jcClassDecl.defs = jcClassDecl.defs.append(writeLock);
+                        }
                     }
 
                     super.visitClassDef(jcClassDecl);
@@ -163,26 +152,26 @@ public class ReadWriteLockProcessor extends AbstractProcessor {
      * 制作读写锁
      * @param clz 要添加锁的类
      * @param lockName 变量名称
-     * @param properties 注解的属性
+     * @param isFair 是否公平锁
      * @return 变量声明
      */
-    private JCVariableDecl makeReadWriteLock(TypeElement clz, String lockName, Map<String, Object> properties) {
+    private JCVariableDecl makeReadWriteLock(TypeElement clz, String lockName, Boolean isFair) {
         // 导入包
         JCCompilationUnit imports = (JCCompilationUnit) this.javacTrees.getPath(clz).getCompilationUnit();
         imports.defs = imports.defs.append(this.treeMaker.Import(this.treeMaker.Select(this.treeMaker.Ident(names.fromString("java.util.concurrent.locks")), this.names.fromString("ReentrantReadWriteLock")), false));
         // 声明变量
         JCModifiers modifiers = this.treeMaker.Modifiers(Flags.PRIVATE + Flags.FINAL);
-        if (properties.get("fair") != null)
+        if (isFair != null)
             return this.treeMaker.VarDef(
                     modifiers,
                     this.names.fromString(lockName),
                     this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
-                    this.treeMaker.NewClass(null, of(memberAccess("java.lang.Boolean")), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), of(this.treeMaker.Literal(properties.get("fair"))), null)
+                    this.treeMaker.NewClass(null, of(memberAccess("java.lang.Boolean")), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), of(this.treeMaker.Literal(isFair)), null)
             );
         else
             return this.treeMaker.VarDef(
                     modifiers,
-                    this.names.fromString("$lock"),
+                    this.names.fromString(lockName),
                     this.memberAccess("java.util.concurrent.locks.ReentrantReadWriteLock"),
                     this.treeMaker.NewClass(null, nil(), treeMaker.Ident(names.fromString("ReentrantReadWriteLock")), nil(), null)
             );
