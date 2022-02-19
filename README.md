@@ -88,4 +88,7 @@
 <tr>
 <td>1.2.0.0</td><td>废弃<code>@MakeReadWriteLocks</code>注解，现在不需要该注解也能正常识别自定义的锁；精简代码，提高编译速度</td><td>2022年2月6日</td>
 </tr>
+<tr>
+<td>1.2.1.0</td><td>锁注解允许继承</td><td>2022年2月19日</td>
+</tr>
 </table>
